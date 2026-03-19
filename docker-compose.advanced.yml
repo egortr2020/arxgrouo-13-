@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_LOOPBACK_USERS: "none"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  producer:
+    build: .
+    environment:
+      APP_MODE: producer
+      RABBITMQ_HOST: rabbitmq
+      PRODUCER_INTERVAL: "0.3"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  consumer:
+    build: .
+    environment:
+      APP_MODE: consumer
+      RABBITMQ_HOST: rabbitmq
+      WORKER_ID: "1"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+
+  dashboard:
+    build: .
+    environment:
+      APP_MODE: dashboard
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy

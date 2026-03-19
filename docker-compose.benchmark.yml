@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_LOOPBACK_USERS: "none"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 8s
+      timeout: 5s
+      retries: 12
+
+  consumer:
+    build: .
+    environment:
+      APP_MODE: consumer
+      RABBITMQ_HOST: rabbitmq
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  dashboard:
+    build: .
+    environment:
+      APP_MODE: dashboard
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  benchmark:
+    build: .
+    environment:
+      APP_MODE: benchmark
+      RABBITMQ_HOST: rabbitmq
+      TASK_COUNT:          "16"
+      IMG_WIDTH:           "800"
+      IMG_HEIGHT:          "800"
+      BLUR_PASSES:         "12"
+      CPU_BURN_ITERATIONS: "20000000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
